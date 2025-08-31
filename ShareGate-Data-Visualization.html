@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShareGate Data Storage Architecture - Interactive Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-powershell.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .warning-banner {
+            background: linear-gradient(135deg, #ff6b6b, #ff8787);
+            color: white;
+            padding: 25px 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(255,107,107,0.3);
+        }
+        
+        .warning-banner h3 {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .warning-icon {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+        
+        .warning-banner ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        
+        .warning-banner li {
+            padding: 5px 0;
+            line-height: 1.5;
+            position: relative;
+            padding-left: 25px;
+        }
+        
+        .warning-banner li:before {
+            content: "•";
+            position: absolute;
+            left: 5px;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+            padding: 10px 0;
+        }
+        
+        .card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 10px;
+            padding: 25px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            min-height: 150px;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        .card h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            font-size: 1.2em;
+        }
+        
+        .card-icon {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+        
+        .path {
+            background: #2d3748;
+            color: #48bb78;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+        
+        .file-list {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        
+        .file-list li {
+            list-style: none;
+            padding: 5px 0;
+            color: #4a5568;
+        }
+        
+        .file-list li:before {
+            content: "📄 ";
+            margin-right: 8px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        /* Override Prism styles for better integration */
+        pre[class*="language-"] {
+            margin: 15px 0;
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+        
+        code[class*="language-"] {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            color: #718096;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+        
+        .tab:hover {
+            color: #4a5568;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .mermaid {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .performance-meter {
+            margin: 20px 0;
+        }
+        
+        .meter-bar {
+            background: #e2e8f0;
+            border-radius: 10px;
+            height: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .meter-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .good { background: linear-gradient(90deg, #48bb78, #38a169); }
+        .warning { background: linear-gradient(90deg, #ed8936, #dd6b20); }
+        .critical { background: linear-gradient(90deg, #f56565, #e53e3e); }
+        
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .flow-item {
+            background: #f7fafc;
+            border: 2px solid #cbd5e0;
+            border-radius: 10px;
+            padding: 15px 25px;
+            margin: 10px;
+            position: relative;
+        }
+        
+        .flow-arrow {
+            font-size: 2em;
+            color: #667eea;
+            margin: 0 10px;
+        }
+        
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            padding: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .flow-diagram {
+                flex-direction: column;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 ShareGate Data Storage Architecture</h1>
+            <p class="subtitle">Understanding Where and How ShareGate Stores Migration Data</p>
+            <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 15px 20px; border-radius: 10px; margin-top: 20px;">
+                <p style="text-align: center; font-size: 1.1em;">📚 <strong>Research Study</strong></p>
+                <p style="text-align: center; margin-top: 10px;">These findings are the result of independent research conducted out of curiosity to better understand how ShareGate works and stores data. This documentation aims to help SharePoint migration specialists understand ShareGate's data architecture.</p>
+            </div>
+            <p style="margin-top: 15px;">
+                <a href="https://login.sharegate.com/" target="_blank" style="color: #667eea; text-decoration: none;">🔐 ShareGate Login</a> | 
+                <a href="https://help.sharegate.com/" target="_blank" style="color: #667eea; text-decoration: none;">📚 Documentation</a> | 
+                <a href="https://help.sharegate.com/en/collections/11073313-general-powershell-commands" target="_blank" style="color: #667eea; text-decoration: none;">⚡ PowerShell Reference</a> | 
+                <a href="https://www.sharegate.com/" target="_blank" style="color: #667eea; text-decoration: none;">🌐 Website</a>
+            </p>
+        </header>
+
+        <div class="warning-banner">
+            <h3><span class="warning-icon">🔬</span> Research Findings and Best Practices</h3>
+            <ul>
+                <li>ShareGate does NOT use a traditional database - all data is stored as serialized .NET objects</li>
+                <li>Data files are NOT portable between ShareGate instances - tied to specific machine/user</li>
+                <li>Large migration histories (>10GB) cause severe performance issues - ShareGate UI becomes slow, exports take a long time</li>
+                <li>Performance issues stem from lack of proper relational database - serialized .NET objects were convenient for ShareGate's developers but cause performance problems for migration consultants working at scale</li>
+                <li>ShareGate cannot easily upgrade to use databases as it would break compatibility with existing data files</li>
+                <li>Cleanup is recommended ONLY when performance degrades - export your data first, then delete old tasks via ShareGate UI</li>
+                <li>Always backup before deleting any .sdb files</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>📁 Data Storage Locations</h2>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('locations', this)">Storage Paths</button>
+                <button class="tab" onclick="showTab('structure', this)">File Structure</button>
+                <button class="tab" onclick="showTab('commands', this)">PowerShell Commands</button>
+                <button class="tab" onclick="showTab('dlls', this)">DLL Reference</button>
+            </div>
+            
+            <div id="locations" class="tab-content active">
+                <div class="grid">
+                    <div class="card">
+                        <h3><span class="card-icon">📊</span>Migration History</h3>
+                        <div class="path">%LOCALAPPDATA%\Sharegate\userdata\migration\</div>
+                        <ul class="file-list">
+                            <li>RecentSessionsInformation.sdb</li>
+                            <li>PrincipalMappings.sdb</li>
+                            <li>CustomFields.sdb</li>
+                            <li>NintexApiKey.sdb</li>
+                        </ul>
+                        <p style="margin-top: 10px; color: #718096;">Contains session history and user mappings</p>
+                    </div>
+                    
+                    <div class="card">
+                        <h3><span class="card-icon">📝</span>Application Logs (Tasks)</h3>
+                        <div class="path">%LOCALAPPDATA%\Sharegate\userdata\applogs\</div>
+                        <ul class="file-list">
+                            <li>10000001.sdb (Session 1)</li>
+                            <li>10000002.sdb (Session 2)</li>
+                            <li>... (can be GB+ each)</li>
+                        </ul>
+                        <p style="margin-top: 10px; color: #718096;">Detailed logs for every migrated item</p>
+                        <p style="margin-top: 5px; color: #9b59b6; font-weight: bold;">💡 These appear as "Tasks" in ShareGate UI</p>
+                    </div>
+                    
+                    <div class="card">
+                        <h3><span class="card-icon">💾</span>Cache</h3>
+                        <div class="path">%LOCALAPPDATA%\Sharegate\userdata\cache\</div>
+                        <p style="margin-top: 10px; color: #718096;">Temporary files - safe to delete</p>
+                    </div>
+                    
+                    <div class="card">
+                        <h3><span class="card-icon">📅</span>Scheduled Jobs</h3>
+                        <div class="path">%LOCALAPPDATA%\Sharegate\userdata\scheduling\</div>
+                        <p style="margin-top: 10px; color: #718096;">Scheduled migration definitions</p>
+                    </div>
+                    
+                    <div class="card">
+                        <h3><span class="card-icon">⚙️</span>ShareGate Config Files</h3>
+                        <div class="path">%LOCALAPPDATA%\Sharegate\userdata\settings\</div>
+                        <ul class="file-list">
+                            <li>application-settings.json</li>
+                            <li>connection-settings.json</li>
+                            <li>user-preferences.json</li>
+                            <li>recent-connections.json</li>
+                        </ul>
+                        <p style="margin-top: 10px; color: #718096;">User preferences and connection settings (JSON format)</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="structure" class="tab-content">
+                <h3>ShareGate File Structure</h3>
+                <div class="file-list" style="margin-top: 20px;">
+                    <pre style="background: #1a202c; color: #68d391; padding: 20px; border-radius: 10px; font-family: 'Courier New', monospace;">
+%LOCALAPPDATA%\Sharegate\userdata\
+│
+├── 📁 migration\
+│   ├── RecentSessionsInformation.sdb  (100 KB - 1 MB)
+│   ├── PrincipalMappings.sdb         (10 - 100 KB)
+│   ├── CustomFields.sdb               (1 - 10 KB)
+│   ├── NintexApiKey.sdb              (1 - 10 KB)
+│   └── _Schema.sdb                    (Schema definitions)
+│
+├── 📁 applogs\                        ⚠️ LARGEST FILES = "Tasks" in UI
+│   ├── 10000001.sdb                  (1 MB - 10+ GB per file!)
+│   ├── 10000002.sdb                  (Each is a migration task/session)
+│   ├── 10000003.sdb                  (Contains ALL item details)
+│   └── ...                           (Numbers increment per session)
+│
+├── 📁 cache\                          ✅ SAFE TO DELETE
+│   └── [Various temporary .sdb files]
+│
+├── 📁 scheduling\
+│   └── [Scheduled job definitions]
+│
+└── 📁 tables\
+    └── Reports.sdb                    (Report configurations)
+                    </pre>
+                </div>
+                
+                <div class="stats-grid" style="margin-top: 20px;">
+                    <div class="stat-card">
+                        <div class="stat-number">5</div>
+                        <div class="stat-label">Main Folders</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">.sdb</div>
+                        <div class="stat-label">File Extension</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">GB+</div>
+                        <div class="stat-label">Applogs Size</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">Binary</div>
+                        <div class="stat-label">Data Format</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="commands" class="tab-content">
+                <div style="margin-bottom: 20px; padding: 15px; background: #e6f3ff; border-radius: 10px;">
+                    <strong>📖 Quick Links:</strong>
+                    <a href="https://help.sharegate.com/en/articles/10236283-find-copysessions" target="_blank" style="color: #667eea; margin-left: 10px;">Find-CopySessions</a> |
+                    <a href="https://help.sharegate.com/en/articles/10236289-export-report" target="_blank" style="color: #667eea; margin-left: 10px;">Export-Report</a> |
+                    <a href="https://help.sharegate.com/en/articles/10236353-copy-content" target="_blank" style="color: #667eea; margin-left: 10px;">Copy-Content</a> |
+                    <a href="https://help.sharegate.com/en/collections/11073313-general-powershell-commands" target="_blank" style="color: #667eea; margin-left: 10px;">All Commands</a>
+                </div>
+                
+                <h3>Find ShareGate Data</h3>
+                <pre><code class="language-powershell"># Get ShareGate data location
+$shareGateData = "$env:LOCALAPPDATA\Sharegate\userdata"
+
+# List all .sdb files with sizes
+Get-ChildItem -Path $shareGateData -Filter "*.sdb" -Recurse | 
+    Select-Object FullName, @{N='Size(MB)';E={[Math]::Round($_.Length/1MB,2)}}, LastWriteTime |
+    Sort-Object 'Size(MB)' -Descending</code></pre>
+                
+                <h3>Export All Migration Sessions</h3>
+                <pre><code class="language-powershell"># Export each migration session to individual CSV files
+Import-Module Sharegate
+
+$sessions = Find-CopySessions
+Write-Host "$($sessions.Count) sessions found" -ForegroundColor Green
+
+mkdir "ShareGate Migration Logs" -ErrorAction SilentlyContinue
+Push-Location "ShareGate Migration Logs"
+
+for($o=0; $o -lt $sessions.count; $o++){
+    $session = $sessions[$o]
+    # Both .CSV and .XLSX are supported:
+    Export-Report $session -NoItemVersions -DefaultColumns -Path ".\$($session.Id).csv"
+}
+
+Pop-Location</code></pre>
+                
+                <h3>Performance-Based Cleanup (Recommended)</h3>
+                <pre><code class="language-powershell"># Export logs when performance degrades, then delete old logs
+# Check total size first
+$appLogsPath = "$env:LOCALAPPDATA\Sharegate\userdata\applogs"
+$totalGB = (Get-ChildItem $appLogsPath -Filter "*.sdb" | 
+    Measure-Object Length -Sum).Sum / 1GB
+
+if ($totalGB -gt 10) {
+    Write-Host "WARNING: Applogs size is $([Math]::Round($totalGB, 2)) GB" -ForegroundColor Red
+    Write-Host "Export your sessions with Export-Report, then delete old logs" -ForegroundColor Yellow
+    
+    # After exporting, delete large old files
+    Get-ChildItem $appLogsPath -Filter "*.sdb" | 
+        Where-Object { $_.Length -gt 1GB } |
+        Sort-Object LastWriteTime |
+        Select-Object -First 10 |
+        Remove-Item -Force -WhatIf  # Remove -WhatIf to actually delete
+}</code></pre>
+            </div>
+            
+            <div id="dlls" class="tab-content">
+                <div class="warning-banner" style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 10px;">⚠️ For Reference Only</h3>
+                    <p>These DLLs are heavily obfuscated with single-letter class names (a, b, c) and cannot be used directly. This information is for research purposes only.</p>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <div class="path" style="margin-bottom: 10px; font-size: 1.1em;">
+                        📂 <strong>Primary DLL Location:</strong> %LOCALAPPDATA%\Apps\ShareGate\
+                    </div>
+                    <div class="path" style="font-size: 1.1em;">
+                        📂 <strong>Data Storage Location:</strong> %LOCALAPPDATA%\Sharegate\userdata\
+                    </div>
+                    <p style="margin-top: 10px; color: #718096; font-style: italic;">
+                        ⚠️ Note: There are TWO distinct locations - Apps\ShareGate\ for executables and Sharegate\userdata\ for data
+                    </p>
+                </div>
+                
+                <div class="grid">
+                    <div class="card">
+                        <h3>🔧 Core ShareGate DLLs</h3>
+                        <ul style="margin-top: 15px; padding-left: 10px; color: #4a5568; line-height: 1.8;">
+                            <li style="padding: 3px 0;">⚙️ <strong>Sharegate.Automation.dll</strong><br/>PowerShell cmdlets (🔒 obfuscated)</li>
+                            <li style="padding: 3px 0;">🛠️ <strong>Sharegate.Common.dll</strong><br/>Common utilities (🔒 heavily obfuscated)</li>
+                            <li style="padding: 3px 0;">📦 <strong>Sharegate.Protobuf.Shared.dll</strong><br/>Custom serialization (⚠️ proprietary)</li>
+                            <li style="padding: 3px 0;">📋 <strong>ShareGate.Tasks.Copy.Service.dll</strong><br/>Copy operations logic</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>💾 Database & Storage DLLs</h3>
+                        <ul style="margin-top: 15px; padding-left: 10px; color: #4a5568; line-height: 1.8;">
+                            <li style="padding: 3px 0;">🗄️ <strong>SnapDb.dll</strong><br/>NoSQL database engine (✅ partially usable)</li>
+                            <li style="padding: 3px 0;">📊 <strong>protobuf-net.dll</strong><br/>Protocol Buffers library</li>
+                            <li style="padding: 3px 0;">📝 <strong>Sharegate.Logging.dll</strong><br/>Logging infrastructure</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>🔐 Obfuscation Details</h3>
+                        <ul style="margin-top: 15px; padding-left: 10px; color: #4a5568; line-height: 1.8;">
+                            <li style="padding: 3px 0;">🏷️ Classes named: a, b, c, z</li>
+                            <li style="padding: 3px 0;">📁 Namespaces: z.b.c, a.q.c, etc.</li>
+                            <li style="padding: 3px 0;">⚡ Methods: single letters</li>
+                            <li style="padding: 3px 0;">🔤 Properties: obfuscated</li>
+                            <li style="padding: 3px 0;">🎯 Type 'c' = CopyResult object</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="file-list" style="margin-top: 20px;">
+                    <h4 style="margin-bottom: 10px;">📁 Complete Directory Structure (Two Locations):</h4>
+                    <pre style="background: #1a202c; color: #68d391; padding: 15px; border-radius: 10px; font-family: 'Courier New', monospace;">
+<span style="color: #ff79c6;">LOCATION 1 - Application Files:</span>
+%LOCALAPPDATA%\Apps\ShareGate\             (C:\Users\[username]\AppData\Local\Apps\ShareGate\)
+│
+├── 📄 ShareGate.exe                     (~5 MB) 
+├── 🔧 Sharegate.Automation.dll          (~1.2 MB)
+├── 🛠️ Sharegate.Common.dll              (~3.5 MB)
+├── 💾 SnapDb.dll                        (~500 KB)
+├── 📦 protobuf-net.dll                  (~700 KB)
+├── 📝 Sharegate.Logging.dll             (~200 KB)
+├── 📊 Sharegate.Protobuf.Shared.dll     (~150 KB)
+├── 📋 ShareGate.Tasks.Copy.Service.dll  (~2 MB)
+│
+└── 📂 [200+ other DLLs and dependencies]
+
+<span style="color: #ff79c6;">LOCATION 2 - Data Storage:</span>
+%LOCALAPPDATA%\Sharegate\userdata\         (C:\Users\[username]\AppData\Local\Sharegate\userdata\)
+│
+├── 📁 migration\          # Migration history and mappings
+├── 📁 applogs\            # Detailed migration logs (GB+ files!)
+├── 📁 cache\              # Temporary cache (safe to delete)
+├── 📁 scheduling\         # Scheduled job definitions
+├── 📁 tables\             # Report configurations
+└── 📁 settings\           # User settings and preferences (JSON files)
+
+<span style="color: #50fa7b;">PowerShell Module Location:</span>
+C:\Program Files\WindowsPowerShell\Modules\Sharegate\
+or installed via: Install-Module Sharegate
+                    </pre>
+                </div>
+                
+                <div class="card" style="margin-top: 20px;">
+                    <h3>⚙️ ShareGate Config Files - JSON Configuration</h3>
+                    <div class="path" style="margin: 15px 0;">
+                        📂 %LOCALAPPDATA%\Sharegate\userdata\settings\
+                    </div>
+                    <p style="margin-bottom: 15px; color: #718096;">Click each file to see what it contains:</p>
+                    
+                    <style>
+                        .config-item {
+                            background: #f7fafc;
+                            border-left: 4px solid #667eea;
+                            margin: 10px 0;
+                            padding: 15px;
+                            border-radius: 5px;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                        }
+                        .config-item:hover {
+                            background: #edf2f7;
+                        }
+                        .config-details {
+                            display: none;
+                            margin-top: 10px;
+                            padding-top: 10px;
+                            border-top: 1px solid #e2e8f0;
+                        }
+                        .config-item.active .config-details {
+                            display: block;
+                        }
+                        .json-example {
+                            background: #1a202c;
+                            color: #68d391;
+                            padding: 15px;
+                            border-radius: 5px;
+                            font-family: 'Courier New', monospace;
+                            font-size: 0.85em;
+                            margin-top: 10px;
+                            overflow-x: auto;
+                            white-space: pre;
+                            line-height: 1.4;
+                        }
+                    </style>
+                    
+                    <div class="config-item" onclick="toggleConfig(this)">
+                        <strong>📄 application-settings.json</strong> - Main application configuration
+                        <div class="config-details">
+                            • UI theme preferences (light/dark mode)<br/>
+                            • Window size and position<br/>
+                            • Performance settings (concurrent operations)<br/>
+                            • Auto-update preferences<br/>
+                            • Telemetry settings<br/>
+                            <pre class="json-example">{
+  "theme": "light",
+  "maxConcurrentOperations": 4,
+  "autoUpdate": true,
+  "telemetryEnabled": true,
+  "windowState": {
+    "width": 1200,
+    "height": 800,
+    "maximized": false
+  }
+}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="config-item" onclick="toggleConfig(this)">
+                        <strong>📄 connection-settings.json</strong> - Connection and authentication
+                        <div class="config-details">
+                            • Saved SharePoint site connections<br/>
+                            • Authentication method preferences<br/>
+                            • Proxy server configuration<br/>
+                            • Timeout settings<br/>
+                            • SSL/TLS preferences<br/>
+                            <pre class="json-example">{
+  "defaultAuthMethod": "Modern",
+  "connectionTimeout": 30000,
+  "useProxy": false,
+  "validateCertificates": true,
+  "retryAttempts": 3,
+  "sslProtocol": "Tls12"
+}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="config-item" onclick="toggleConfig(this)">
+                        <strong>📄 user-preferences.json</strong> - User-specific migration defaults
+                        <div class="config-details">
+                            • Default copy options<br/>
+                            • Preferred migration settings<br/>
+                            • Notification preferences<br/>
+                            • Export format defaults<br/>
+                            • Error handling preferences<br/>
+                            <pre class="json-example">{
+  "defaultCopyOptions": {
+    "preservePermissions": true,
+    "preserveMetadata": true,
+    "versionLimit": 10,
+    "includeVersions": false,
+    "preserveAuthors": true
+  },
+  "exportFormat": "xlsx",
+  "notificationSound": true
+}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="config-item" onclick="toggleConfig(this)">
+                        <strong>📄 recent-connections.json</strong> - Quick access history
+                        <div class="config-details">
+                            • Recently accessed SharePoint sites<br/>
+                            • Teams and M365 Groups connections<br/>
+                            • Last access timestamps<br/>
+                            • Connection metadata<br/>
+                            • Quick connect favorites<br/>
+                            <pre class="json-example">{
+  "recentSites": [
+    {
+      "url": "https://[tenant].sharepoint.com",
+      "title": "Contoso Portal",
+      "lastAccessed": "2024-01-15T10:30:00Z",
+      "isFavorite": true,
+      "authType": "Modern"
+    },
+    {
+      "url": "https://[tenant].sharepoint.com/sites/hr",
+      "title": "HR Site",
+      "lastAccessed": "2024-01-14T14:20:00Z",
+      "isFavorite": false,
+      "authType": "Modern"
+    }
+  ],
+  "maxRecentItems": 20
+}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="config-item" onclick="toggleConfig(this)">
+                        <strong>📄 feature-flags.json</strong> - Beta and experimental features
+                        <div class="config-details">
+                            • Beta features toggle<br/>
+                            • Experimental options<br/>
+                            • Advanced migration modes<br/>
+                            • Preview features<br/>
+                            • Debug options<br/>
+                            <pre class="json-example">{
+  "enableBetaFeatures": false,
+  "modernAuthOnly": true,
+  "advancedLogging": false,
+  "experimentalPerfMode": false,
+  "parallelOperations": {
+    "enabled": true,
+    "maxThreads": 4
+  },
+  "debugMode": false
+}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="config-item" onclick="toggleConfig(this)">
+                        <strong>📄 mapping-templates.json</strong> - Saved mapping configurations
+                        <div class="config-details">
+                            • User mapping templates<br/>
+                            • Content type mappings<br/>
+                            • Metadata field mappings<br/>
+                            • Permission mappings<br/>
+                            • Reusable mapping profiles<br/>
+                            <pre class="json-example">{
+  "userMappings": {
+    "domain1\\user1": "user1@tenant.onmicrosoft.com",
+    "domain1\\user2": "user2@tenant.onmicrosoft.com",
+    "domain1\\admin": "admin@tenant.onmicrosoft.com"
+  },
+  "groupMappings": {
+    "domain1\\hr-team": "HR Team",
+    "domain1\\it-dept": "IT Department"
+  },
+  "contentTypeMappings": {
+    "Document": "Document",
+    "Custom Form": "Form"
+  }
+}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="config-item" onclick="toggleConfig(this)">
+                        <strong>📄 license-info.json</strong> - License and subscription details
+                        <div class="config-details">
+                            • License key information<br/>
+                            • Subscription status<br/>
+                            • Feature entitlements<br/>
+                            • Expiration dates<br/>
+                            • User seat allocation<br/>
+                            <pre class="json-example">{
+  "licenseType": "Enterprise",
+  "validUntil": "2024-12-31",
+  "features": [
+    "Migration",
+    "Teams",
+    "Planner",
+    "OneDrive",
+    "M365Groups"
+  ],
+  "seats": 50,
+  "licenseKey": "XXXX-XXXX-XXXX-XXXX",
+  "registeredTo": "Contoso Inc."
+}</pre>
+                        </div>
+                    </div>
+                    
+                    <div class="warning-banner" style="margin-top: 15px; padding: 10px;">
+                        <strong>⚠️ Privacy Note:</strong> These JSON files may contain sensitive information like tenant URLs, license keys, and user mappings. Handle with care when sharing or backing up.
+                    </div>
+                    
+                    <script>
+                        function toggleConfig(element) {
+                            element.classList.toggle('active');
+                        }
+                    </script>
+                </div>
+                
+                <div class="code-block" style="margin-top: 20px;">
+                    <pre># Example of obfuscated code structure found in DLLs:
+namespace z.b.c {
+    public class c {  // This is actually CopyResult
+        public c c { get; set; }
+        public b b { get; set; }
+        public a a { get; set; }
+        public z z { get; set; }
+    }
+}</pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📸 ShareGate Tasks Interface</h2>
+            <p style="margin-bottom: 20px; color: #718096;">The applogs files (10000xxx.sdb) appear as "Tasks" in the ShareGate desktop application. Each task represents a migration session with detailed results:</p>
+            <div style="text-align: center; background: #f7fafc; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <img src="ShareGate Tasks.jpg" alt="ShareGate Tasks UI showing migration history" style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); cursor: pointer;" onclick="window.open('ShareGate Tasks.jpg', '_blank')" />
+                <p style="margin-top: 15px; color: #4a5568; font-style: italic;">Click image to view full size - Shows how migration sessions are displayed in ShareGate's UI</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">Tasks = Logs</div>
+                    <div class="stat-label">UI Name for Applogs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">10000xxx.sdb</div>
+                    <div class="stat-label">Actual File Format</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">Success/Error</div>
+                    <div class="stat-label">Result Tracking</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">Export Available</div>
+                    <div class="stat-label">Via PowerShell</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 Performance Impact Analysis</h2>
+            
+            <div class="performance-meter">
+                <h3>Applogs Size Impact on Performance</h3>
+                <div style="margin-top: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>&lt; 1 GB</span>
+                        <div class="meter-bar" style="width: 200px;">
+                            <div class="meter-fill good" style="width: 100%;">Fast</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>1-5 GB</span>
+                        <div class="meter-bar" style="width: 200px;">
+                            <div class="meter-fill good" style="width: 80%;">Good</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>5-10 GB</span>
+                        <div class="meter-bar" style="width: 200px;">
+                            <div class="meter-fill warning" style="width: 60%;">Slow</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>&gt; 10 GB</span>
+                        <div class="meter-bar" style="width: 200px;">
+                            <div class="meter-fill critical" style="width: 40%;">Critical</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">Export</div>
+                    <div class="stat-label">When Slow</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">10 GB</div>
+                    <div class="stat-label">Max Recommended Size</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">As Needed</div>
+                    <div class="stat-label">Performance-Based Cleanup</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">Archive First</div>
+                    <div class="stat-label">Then Delete</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔄 Data Flow Architecture</h2>
+            
+            <div class="mermaid">
+                sequenceDiagram
+                    participant User
+                    participant ShareGate UI
+                    participant SnapDb Engine
+                    participant Applogs Files
+                    participant PowerShell
+                    
+                    User->>ShareGate UI: Start Migration
+                    ShareGate UI->>SnapDb Engine: Create Session
+                    SnapDb Engine->>Applogs Files: Create 10000xxx.sdb
+                    
+                    loop For Each Item
+                        ShareGate UI->>SnapDb Engine: Serialize Item
+                        SnapDb Engine->>Applogs Files: Write Binary Data
+                    end
+                    
+                    ShareGate UI-->>User: Migration Complete
+                    
+                    User->>PowerShell: Export-Report
+                    PowerShell->>SnapDb Engine: Read Session
+                    SnapDb Engine->>Applogs Files: Deserialize Data
+                    PowerShell-->>User: CSV Report
+            </div>
+            
+            <div class="flow-diagram">
+                <div class="flow-item">
+                    <strong>ShareGate Desktop</strong>
+                    <br>Performs Migration
+                </div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">
+                    <strong>SnapDb Engine</strong>
+                    <br>Serializes Objects
+                </div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">
+                    <strong>.sdb Files</strong>
+                    <br>Binary Storage
+                </div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-item">
+                    <strong>PowerShell</strong>
+                    <br>Export Reports
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🛠️ Maintenance Scripts</h2>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('health', this)">Health Check</button>
+                <button class="tab" onclick="showTab('backup', this)">Backup Script</button>
+                <button class="tab" onclick="showTab('cleanup', this)">Cleanup Script</button>
+            </div>
+            
+            <div id="health" class="tab-content active">
+                <pre><code class="language-powershell"># ShareGate Health Check Script
+function Test-ShareGateHealth {
+    $data = "$env:LOCALAPPDATA\Sharegate\userdata"
+    
+    # Check total size
+    $totalGB = (Get-ChildItem $data -Recurse | 
+        Measure-Object Length -Sum).Sum / 1GB
+    
+    # Check old logs count
+    $oldLogs = Get-ChildItem "$data\applogs" -Filter "*.sdb" |
+        Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-90) }
+    
+    # Display health status
+    Write-Host "`n=== ShareGate Health Status ===" -ForegroundColor Cyan
+    
+    if ($totalGB -lt 5) {
+        Write-Host "✓ Size OK: $([Math]::Round($totalGB,1)) GB" -ForegroundColor Green
+    } elseif ($totalGB -lt 10) {
+        Write-Host "⚠ Size Warning: $([Math]::Round($totalGB,1)) GB" -ForegroundColor Yellow
+    } else {
+        Write-Host "✗ Size Critical: $([Math]::Round($totalGB,1)) GB" -ForegroundColor Red
+    }
+    
+    if ($oldLogs.Count -gt 0) {
+        Write-Host "⚠ Found $($oldLogs.Count) logs older than 90 days" -ForegroundColor Yellow
+    } else {
+        Write-Host "✓ No old logs found" -ForegroundColor Green
+    }
+}
+
+Test-ShareGateHealth</code></pre>
+            </div>
+            
+            <div id="backup" class="tab-content">
+                <pre><code class="language-powershell"># Backup ShareGate Data
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$backupPath = "$env:USERPROFILE\Desktop\ShareGate-Backup-$timestamp"
+
+# Create backup directory
+New-Item -ItemType Directory -Path $backupPath -Force
+
+# Backup migration data (excluding cache)
+$source = "$env:LOCALAPPDATA\Sharegate\userdata"
+$folders = @('migration', 'scheduling', 'tables')
+
+foreach ($folder in $folders) {
+    Copy-Item -Path "$source\$folder" -Destination $backupPath -Recurse
+    Write-Host "✓ Backed up: $folder" -ForegroundColor Green
+}
+
+Write-Host "`n✓ Backup complete: $backupPath" -ForegroundColor Green</code></pre>
+            </div>
+            
+            <div id="cleanup" class="tab-content">
+                <pre><code class="language-powershell"># Performance-Based Cleanup Script (Run ONLY when ShareGate is slow)
+$shareGateData = "$env:LOCALAPPDATA\Sharegate\userdata"
+
+# 1. Clear cache
+Remove-Item "$shareGateData\cache\*" -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host "✓ Cache cleared" -ForegroundColor Green
+
+# 2. Archive old applogs (>90 days)
+$archivePath = "$env:USERPROFILE\Desktop\ShareGate-Archive-$(Get-Date -Format 'yyyyMM')"
+New-Item -ItemType Directory -Path $archivePath -Force
+
+$oldLogs = Get-ChildItem "$shareGateData\applogs" -Filter "*.sdb" |
+    Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-90) }
+
+if ($oldLogs) {
+    $oldLogs | Move-Item -Destination $archivePath
+    Write-Host "✓ Archived $($oldLogs.Count) old log files" -ForegroundColor Green
+}
+
+# 3. Display space recovered
+$newSize = (Get-ChildItem $shareGateData -Recurse | 
+    Measure-Object Length -Sum).Sum / 1GB
+Write-Host "✓ Current size: $([Math]::Round($newSize, 2)) GB" -ForegroundColor Green</code></pre>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>⚡ Additional Details About ShareGate's Data Storage</h2>
+            
+            <div class="grid">
+                <div class="card">
+                    <h3>SnapDb Technology</h3>
+                    <ul style="margin-top: 15px; padding-left: 10px; color: #4a5568; line-height: 1.8;">
+                        <li style="padding: 3px 0;">📦 Binary key-value store</li>
+                        <li style="padding: 3px 0;">🌳 B+Tree indexing</li>
+                        <li style="padding: 3px 0;">🔐 Custom serialization</li>
+                        <li style="padding: 3px 0;">⚠️ No SQL support</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>Serialization Details</h3>
+                    <ul style="margin-top: 15px; padding-left: 10px; color: #4a5568; line-height: 1.8;">
+                        <li style="padding: 3px 0;">📦 Serialized .NET objects</li>
+                        <li style="padding: 3px 0;">✅ Custom binary format</li>
+                        <li style="padding: 3px 0;">🔒 DLLs are heavily obfuscated</li>
+                        <li style="padding: 3px 0;">🔍 Difficult to analyze</li>
+                        <li style="padding: 3px 0;">⚠️ Proprietary implementation</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>PowerShell Cmdlets</h3>
+                    <div style="margin-top: 15px;">
+                        <h4 style="color: #667eea; margin-bottom: 10px;">📊 Reporting Cmdlets</h4>
+                        <ul style="padding-left: 10px; color: #4a5568; line-height: 1.8;">
+                            <li style="padding: 3px 0;"><a href="https://help.sharegate.com/en/articles/10236283-find-copysessions" target="_blank" style="color: #667eea;">Find-CopySessions</a> - Read migration history</li>
+                            <li style="padding: 3px 0;"><a href="https://help.sharegate.com/en/articles/10236289-export-report" target="_blank" style="color: #667eea;">Export-Report</a> - Export to CSV/Excel</li>
+                        </ul>
+                        
+                        <h4 style="color: #667eea; margin: 15px 0 10px 0;">📁 Copy Cmdlets (Generate Logs)</h4>
+                        <ul style="padding-left: 10px; color: #4a5568; line-height: 1.8;">
+                            <li style="padding: 3px 0;"><a href="https://help.sharegate.com/en/articles/10236353-copy-content" target="_blank" style="color: #667eea;">Copy-Content</a> - Items between lists</li>
+                            <li style="padding: 3px 0;"><a href="https://help.sharegate.com/en/articles/10236344-copy-list" target="_blank" style="color: #667eea;">Copy-List</a> - Entire lists</li>
+                            <li style="padding: 3px 0;"><a href="https://help.sharegate.com/en/articles/10236343-copy-site" target="_blank" style="color: #667eea;">Copy-Site</a> - Site structure</li>
+                            <li style="padding: 3px 0;"><a href="https://help.sharegate.com/en/articles/10236355-copy-team" target="_blank" style="color: #667eea;">Copy-Team</a> - Microsoft Teams</li>
+                            <li style="padding: 3px 0;"><a href="https://help.sharegate.com/en/articles/10236362-copy-plannerplan" target="_blank" style="color: #667eea;">Copy-PlannerPlan</a> - Planner plans</li>
+                            <li style="padding: 3px 0;"><a href="https://help.sharegate.com/en/articles/10236363-import-document" target="_blank" style="color: #667eea;">Import-Document</a> - File system imports</li>
+                        </ul>
+                        
+                        <p style="margin-top: 15px; font-size: 0.9em;">
+                            <a href="https://help.sharegate.com/en/collections/11073313-general-powershell-commands" target="_blank" style="color: #667eea;">
+                                📚 Full PowerShell Documentation →
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>ShareGate Data Storage Architecture Guide</p>
+            <p>For SharePoint Migration Specialists</p>
+            <div style="margin-top: 30px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 30px;">
+                <img src="ProfilePhoto.jpeg" alt="Denis Molodtsov" style="width: 120px; height: 120px; border-radius: 50%; border: 3px solid white; box-shadow: 0 5px 20px rgba(0,0,0,0.3);" />
+                <div style="text-align: left;">
+                    <p style="font-size: 1.3em; margin-bottom: 10px;">Research conducted by <strong>Denis Molodtsov</strong></p>
+                    <p style="margin-bottom: 5px; opacity: 0.95;">SharePoint & Migration Expert</p>
+                    <p style="margin-top: 10px;">
+                        <a href="https://www.linkedin.com/in/molodtsovd/" target="_blank" style="color: white; margin-right: 20px; text-decoration: none;">🔗 LinkedIn: /in/molodtsovd</a>
+                        <a href="https://spdenis.com/" target="_blank" style="color: white; text-decoration: none;">🌐 Blog: spdenis.com</a>
+                    </p>
+                    <p style="margin-top: 10px; opacity: 0.9; font-style: italic;">Experienced in various migrations involving ShareGate<br/>Assistance available if needed</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#7c3aed',
+                lineColor: '#5a67d8',
+                secondaryColor: '#f7fafc',
+                tertiaryColor: '#fff'
+            }
+        });
+        
+        function showTab(tabName, button) {
+            // Hide all tab contents
+            const contents = button.parentElement.parentElement.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active class from all tabs
+            const tabs = button.parentElement.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            button.classList.add('active');
+        }
+        
+        // Animate performance meters on load
+        window.addEventListener('load', () => {
+            const meters = document.querySelectorAll('.meter-fill');
+            meters.forEach((meter, index) => {
+                setTimeout(() => {
+                    meter.style.width = meter.style.width;
+                }, index * 100);
+            });
+        });
+    </script>
+</body>
+</html>
